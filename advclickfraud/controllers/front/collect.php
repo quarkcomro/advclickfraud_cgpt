@@ -9,32 +9,66 @@ if (!defined('_PS_VERSION_')) {
 
 class AdvClickFraudCollectModuleFrontController extends ModuleFrontController
 {
+    private const MAX_PAYLOAD_BYTES = 32768;
+
     public $ajax = true;
     public $ssl = true;
 
     public function postProcess(): void
     {
         header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
         if (!$this->module instanceof AdvClickFraud || !$this->module->isEnabledForCurrentShop()) {
-            $this->ajaxRender(json_encode(['ok' => false]));
+            $this->renderJson(['ok' => false]);
             return;
         }
 
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('HTTP/1.1 405 Method Not Allowed');
-            $this->ajaxRender(json_encode(['ok' => false]));
+        if ((string) ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            header('Allow: POST');
+            $this->renderJson(['ok' => false], 405);
             return;
         }
 
-        $payload = json_decode((string) Tools::file_get_contents('php://input'), true);
+        $rawPayload = (string) Tools::file_get_contents('php://input');
+        if ($rawPayload === '') {
+            $this->renderJson(['ok' => false], 400);
+            return;
+        }
+
+        if (strlen($rawPayload) > self::MAX_PAYLOAD_BYTES) {
+            $this->renderJson(['ok' => false], 413);
+            return;
+        }
+
+        try {
+            $payload = json_decode($rawPayload, true, 16, JSON_THROW_ON_ERROR);
+        } catch (JsonException $exception) {
+            unset($exception);
+            $this->renderJson(['ok' => false], 400);
+            return;
+        }
+
         if (!is_array($payload)) {
-            header('HTTP/1.1 400 Bad Request');
-            $this->ajaxRender(json_encode(['ok' => false]));
+            $this->renderJson(['ok' => false], 400);
             return;
         }
 
         $this->module->storeClientEvent($payload);
-        $this->ajaxRender(json_encode(['ok' => true]));
+        $this->renderJson(['ok' => true]);
+    }
+
+    private function renderJson(array $payload, int $statusCode = 200): void
+    {
+        http_response_code($statusCode);
+
+        try {
+            $json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        } catch (JsonException $exception) {
+            unset($exception);
+            $json = '{"ok":false}';
+        }
+
+        $this->ajaxRender($json);
     }
 }
