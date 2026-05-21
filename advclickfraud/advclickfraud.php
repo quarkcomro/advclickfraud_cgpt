@@ -25,9 +25,11 @@ class AdvClickFraud extends Module
     public const CFG_PRODUCT_THRESHOLD = 'ADVCLICKFRAUD_PRODUCT_THRESHOLD';
     public const CFG_SEARCH_THRESHOLD = 'ADVCLICKFRAUD_SEARCH_THRESHOLD';
     public const CFG_BLOCK_MINUTES = 'ADVCLICKFRAUD_BLOCK_MINUTES';
+    public const CFG_ADMIN_REFRESH_INTERVAL = 'ADVCLICKFRAUD_ADMIN_REFRESH_INTERVAL';
 
     private const DOMAIN_ADMIN = 'Modules.Advclickfraud.Admin';
     private const DOMAIN_SHOP = 'Modules.Advclickfraud.Shop';
+    private const ADMIN_REFRESH_INTERVALS = [0, 15, 30, 60, 120];
 
     public function __construct()
     {
@@ -37,7 +39,7 @@ class AdvClickFraud extends Module
         $this->author = 'QuarkCom';
         $this->need_instance = 0;
         $this->bootstrap = true;
-        $this->ps_versions_compliancy = ['min' => '8.2.0', 'max' => _PS_VERSION_];
+        $this->ps_versions_compliancy = ['min' => '8.2.0', 'max' => '9.99.99'];
 
         parent::__construct();
 
@@ -59,6 +61,7 @@ class AdvClickFraud extends Module
             && $this->registerHook('displayHeader')
             && $this->registerHook('displayFooter')
             && $this->registerHook('actionFrontControllerSetMedia')
+            && $this->registerHook('displayBackOfficeHeader')
             && $this->registerHook('actionDispatcher')
             && $this->registerHook('moduleRoutes');
     }
@@ -82,6 +85,8 @@ class AdvClickFraud extends Module
             'manual_help' => $this->trans('The manual is included in the module package under docs/.', [], self::DOMAIN_ADMIN),
             'stats' => $this->dashboardStats(),
             'recent_events' => $this->recentEvents(),
+            'admin_refresh_interval' => (int) $this->getConfig(self::CFG_ADMIN_REFRESH_INTERVAL),
+            'admin_refresh_disabled_label' => $this->trans('Disabled', [], self::DOMAIN_ADMIN),
         ]);
 
         return $output . $this->display(__FILE__, 'views/templates/admin/configure.tpl');
@@ -97,6 +102,21 @@ class AdvClickFraud extends Module
                 ['position' => 'bottom', 'priority' => 250]
             );
         }
+    }
+
+    public function hookDisplayBackOfficeHeader(array $params): void
+    {
+        unset($params);
+
+        if ((string) Tools::getValue('configure') !== $this->name) {
+            return;
+        }
+
+        if (!isset($this->context->controller)) {
+            return;
+        }
+
+        $this->context->controller->addJS($this->_path . 'views/js/admin.js');
     }
 
     public function hookDisplayHeader(array $params): string
@@ -241,6 +261,7 @@ class AdvClickFraud extends Module
                 $this->switchField(self::CFG_ENABLED, $this->trans('Enable module', [], self::DOMAIN_ADMIN), $this->trans('Enables signal collection and risk evaluation for the current shop context.', [], self::DOMAIN_ADMIN)),
                 ['type' => 'select', 'label' => $this->trans('Operating mode', [], self::DOMAIN_ADMIN), 'name' => self::CFG_MODE, 'desc' => $this->trans('Observe records decisions only. Enable blocking after reviewing logs.', [], self::DOMAIN_ADMIN), 'options' => ['query' => [['id' => 'observe', 'name' => $this->trans('Observe only', [], self::DOMAIN_ADMIN)], ['id' => 'rate_limit', 'name' => $this->trans('Rate limit', [], self::DOMAIN_ADMIN)], ['id' => 'block', 'name' => $this->trans('Block high-risk traffic', [], self::DOMAIN_ADMIN)]], 'id' => 'id', 'name' => 'name']],
                 $this->textField(self::CFG_RETENTION_DAYS, $this->trans('Log retention days', [], self::DOMAIN_ADMIN), $this->trans('Number of days to keep detailed risk events before cleanup.', [], self::DOMAIN_ADMIN), '30'),
+                ['type' => 'select', 'label' => $this->trans('Admin table refresh interval', [], self::DOMAIN_ADMIN), 'name' => self::CFG_ADMIN_REFRESH_INTERVAL, 'desc' => $this->trans('Controls the Back Office risk events table refresh countdown.', [], self::DOMAIN_ADMIN), 'options' => ['query' => $this->adminRefreshIntervalOptions(), 'id' => 'id', 'name' => 'name']],
                 $this->switchField(self::CFG_ENABLE_JA4, $this->trans('Enable JA4 correlation', [], self::DOMAIN_ADMIN), $this->trans('Correlates browser fingerprints with TLS/network fingerprints received from a trusted edge proxy.', [], self::DOMAIN_ADMIN)),
                 $this->textareaField(self::CFG_TRUSTED_PROXIES, $this->trans('Trusted proxy IP addresses', [], self::DOMAIN_ADMIN), $this->trans('Use one proxy IP address per line. Add an optional note after a hash sign, for example: 203.0.113.10 # Cloudflare edge node.', [], self::DOMAIN_ADMIN), "203.0.113.10 # Cloudflare edge\n198.51.100.10 # HAProxy node 1"),
                 $this->textField(self::CFG_JA4_HEADER, $this->trans('JA4 header name', [], self::DOMAIN_ADMIN), $this->trans('Internal header set by your CDN, WAF, HAProxy, NGINX or edge worker.', [], self::DOMAIN_ADMIN), 'X-AdvCF-JA4'),
@@ -275,6 +296,7 @@ class AdvClickFraud extends Module
             self::CFG_ENABLED => (string) (int) Tools::getValue(self::CFG_ENABLED),
             self::CFG_MODE => $mode,
             self::CFG_RETENTION_DAYS => (string) max(1, (int) Tools::getValue(self::CFG_RETENTION_DAYS, 30)),
+            self::CFG_ADMIN_REFRESH_INTERVAL => (string) $this->sanitizedAdminRefreshInterval(),
             self::CFG_ENABLE_JA4 => (string) (int) Tools::getValue(self::CFG_ENABLE_JA4),
             self::CFG_TRUSTED_PROXIES => trim((string) Tools::getValue(self::CFG_TRUSTED_PROXIES)),
             self::CFG_JA4_HEADER => trim((string) Tools::getValue(self::CFG_JA4_HEADER, 'X-AdvCF-JA4')),
@@ -290,11 +312,29 @@ class AdvClickFraud extends Module
     private function configurationValues(): array
     {
         $values = [];
-        foreach ([self::CFG_ENABLED, self::CFG_MODE, self::CFG_RETENTION_DAYS, self::CFG_ENABLE_JA4, self::CFG_TRUSTED_PROXIES, self::CFG_JA4_HEADER, self::CFG_JA4H_HEADER, self::CFG_ENABLE_SCRAPING, self::CFG_PRODUCT_THRESHOLD, self::CFG_SEARCH_THRESHOLD, self::CFG_ENABLE_CLICK_FRAUD, self::CFG_BLOCK_MINUTES] as $key) {
+        foreach ([self::CFG_ENABLED, self::CFG_MODE, self::CFG_RETENTION_DAYS, self::CFG_ADMIN_REFRESH_INTERVAL, self::CFG_ENABLE_JA4, self::CFG_TRUSTED_PROXIES, self::CFG_JA4_HEADER, self::CFG_JA4H_HEADER, self::CFG_ENABLE_SCRAPING, self::CFG_PRODUCT_THRESHOLD, self::CFG_SEARCH_THRESHOLD, self::CFG_ENABLE_CLICK_FRAUD, self::CFG_BLOCK_MINUTES] as $key) {
             $values[$key] = $this->getConfig($key);
         }
 
         return $values;
+    }
+
+    private function adminRefreshIntervalOptions(): array
+    {
+        return [
+            ['id' => 0, 'name' => $this->trans('Disabled', [], self::DOMAIN_ADMIN)],
+            ['id' => 15, 'name' => '15s'],
+            ['id' => 30, 'name' => '30s'],
+            ['id' => 60, 'name' => '60s'],
+            ['id' => 120, 'name' => '120s'],
+        ];
+    }
+
+    private function sanitizedAdminRefreshInterval(): int
+    {
+        $interval = (int) Tools::getValue(self::CFG_ADMIN_REFRESH_INTERVAL, 0);
+
+        return in_array($interval, self::ADMIN_REFRESH_INTERVALS, true) ? $interval : 0;
     }
 
     private function switchField(string $name, string $label, string $description): array
@@ -315,7 +355,7 @@ class AdvClickFraud extends Module
     private function installConfiguration(): bool
     {
         $defaults = [
-            self::CFG_ENABLED => '0', self::CFG_MODE => 'observe', self::CFG_SECRET => bin2hex(random_bytes(32)), self::CFG_RETENTION_DAYS => '30',
+            self::CFG_ENABLED => '0', self::CFG_MODE => 'observe', self::CFG_SECRET => bin2hex(random_bytes(32)), self::CFG_RETENTION_DAYS => '30', self::CFG_ADMIN_REFRESH_INTERVAL => '0',
             self::CFG_ENABLE_SCRAPING => '1', self::CFG_ENABLE_CLICK_FRAUD => '1', self::CFG_ENABLE_JA4 => '0', self::CFG_TRUSTED_PROXIES => '', self::CFG_JA4_HEADER => 'X-AdvCF-JA4', self::CFG_JA4H_HEADER => 'X-AdvCF-JA4H',
             self::CFG_PRODUCT_THRESHOLD => '120', self::CFG_SEARCH_THRESHOLD => '50', self::CFG_BLOCK_MINUTES => '15',
         ];
@@ -330,7 +370,7 @@ class AdvClickFraud extends Module
 
     private function uninstallConfiguration(): bool
     {
-        foreach ([self::CFG_ENABLED, self::CFG_MODE, self::CFG_SECRET, self::CFG_RETENTION_DAYS, self::CFG_ENABLE_SCRAPING, self::CFG_ENABLE_CLICK_FRAUD, self::CFG_ENABLE_JA4, self::CFG_TRUSTED_PROXIES, self::CFG_JA4_HEADER, self::CFG_JA4H_HEADER, self::CFG_PRODUCT_THRESHOLD, self::CFG_SEARCH_THRESHOLD, self::CFG_BLOCK_MINUTES] as $key) {
+        foreach ([self::CFG_ENABLED, self::CFG_MODE, self::CFG_SECRET, self::CFG_RETENTION_DAYS, self::CFG_ADMIN_REFRESH_INTERVAL, self::CFG_ENABLE_SCRAPING, self::CFG_ENABLE_CLICK_FRAUD, self::CFG_ENABLE_JA4, self::CFG_TRUSTED_PROXIES, self::CFG_JA4_HEADER, self::CFG_JA4H_HEADER, self::CFG_PRODUCT_THRESHOLD, self::CFG_SEARCH_THRESHOLD, self::CFG_BLOCK_MINUTES] as $key) {
             Configuration::deleteByName($key);
         }
 

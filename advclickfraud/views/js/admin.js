@@ -11,11 +11,11 @@
 
   ready(function () {
     var tabStorageKey = 'advclickfraud_active_admin_tab';
-    var refreshStorageKey = 'advclickfraud_event_refresh_seconds';
     var tabs = document.querySelectorAll('#advclickfraud-dashboard-tabs a[data-toggle="tab"]');
     var intervalSelect = document.getElementById('advclickfraud-refresh-interval');
     var countdownNode = document.getElementById('advclickfraud-refresh-countdown');
     var tableWrapperId = 'advclickfraud-events-table-wrapper';
+    var disabledLabel = intervalSelect && intervalSelect.getAttribute('data-disabled-label') ? intervalSelect.getAttribute('data-disabled-label') : 'Disabled';
     var refreshSeconds = 0;
     var remainingSeconds = 0;
     var timerId = null;
@@ -43,7 +43,7 @@
         return;
       }
       if (refreshSeconds <= 0) {
-        countdownNode.textContent = 'Disabled';
+        countdownNode.textContent = disabledLabel;
         return;
       }
       countdownNode.textContent = String(remainingSeconds) + 's';
@@ -60,6 +60,12 @@
     }
 
     function refreshEventsTable() {
+      if (typeof window.fetch !== 'function') {
+        remainingSeconds = refreshSeconds;
+        updateCountdownText();
+        return;
+      }
+
       fetch(window.location.href, {
         method: 'GET',
         credentials: 'same-origin',
@@ -103,16 +109,7 @@
     rememberTabs();
 
     if (intervalSelect) {
-      var storedInterval = window.localStorage ? window.localStorage.getItem(refreshStorageKey) : null;
-      if (storedInterval !== null) {
-        intervalSelect.value = storedInterval;
-      }
-      intervalSelect.addEventListener('change', function () {
-        if (window.localStorage) {
-          window.localStorage.setItem(refreshStorageKey, intervalSelect.value);
-        }
-        startTimer();
-      });
+      intervalSelect.addEventListener('change', startTimer);
       startTimer();
     }
   });

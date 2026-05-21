@@ -22,12 +22,12 @@
       <div class="panel-heading"><i class="icon-refresh"></i> {l s='Table refresh' d='Modules.Advclickfraud.Admin'}</div>
       <div class="form-inline">
         <label for="advclickfraud-refresh-interval" style="margin-right:8px;">{l s='Refresh interval' d='Modules.Advclickfraud.Admin'}</label>
-        <select id="advclickfraud-refresh-interval" class="form-control fixed-width-md">
-          <option value="0">{l s='Disabled' d='Modules.Advclickfraud.Admin'}</option>
-          <option value="15">15s</option>
-          <option value="30">30s</option>
-          <option value="60">60s</option>
-          <option value="120">120s</option>
+        <select id="advclickfraud-refresh-interval" class="form-control fixed-width-md" data-disabled-label="{$admin_refresh_disabled_label|escape:'html':'UTF-8'}">
+          <option value="0" {if $admin_refresh_interval == 0}selected="selected"{/if}>{l s='Disabled' d='Modules.Advclickfraud.Admin'}</option>
+          <option value="15" {if $admin_refresh_interval == 15}selected="selected"{/if}>15s</option>
+          <option value="30" {if $admin_refresh_interval == 30}selected="selected"{/if}>30s</option>
+          <option value="60" {if $admin_refresh_interval == 60}selected="selected"{/if}>60s</option>
+          <option value="120" {if $admin_refresh_interval == 120}selected="selected"{/if}>120s</option>
         </select>
         <span style="margin-left:15px;">{l s='Next refresh' d='Modules.Advclickfraud.Admin'}: <strong id="advclickfraud-refresh-countdown">{l s='Disabled' d='Modules.Advclickfraud.Admin'}</strong></span>
       </div>
@@ -84,4 +84,3 @@
 </div>
 
 <div class="panel"><h3><i class="icon-book"></i> {$manual_title|escape:'html':'UTF-8'}</h3><p>{$manual_help|escape:'html':'UTF-8'}</p></div>
-<script src="/modules/advclickfraud/views/js/admin.js"></script>
