@@ -1,0 +1,26 @@
+{
+    "name": "quarkcomro/advclickfraud",
+    "description": "Advanced click fraud and scraping protection module for PrestaShop.",
+    "type": "prestashop-module",
+    "authors": [
+        {
+            "name": "QuarkCom"
+        }
+    ],
+    "require": {
+        "php": ">=8.1"
+    },
+    "config": {
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "autoload": {
+        "classmap": [
+            "advclickfraud.php",
+            "controllers/"
+        ],
+        "exclude-from-classmap": [
+            "docs/"
+        ]
+    }
+}
