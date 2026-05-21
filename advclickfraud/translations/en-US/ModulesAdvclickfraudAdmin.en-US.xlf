@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file original="modules/advclickfraud" source-language="en-US" target-language="en-US" datatype="plaintext">
+    <body>
+      <trans-unit id="0933b792a30e534b595186e8de2fb688" resname="Advanced Click Fraud Protection">
+        <source>Advanced Click Fraud Protection</source>
+        <target state="translated">Advanced Click Fraud Protection</target>
+      </trans-unit>
+      <trans-unit id="9385f6dbee792d7e319b4505ba76e0ea" resname="Collects defensive browser, click and network-fingerprint signals to detect scraping and advertising click fraud.">
+        <source>Collects defensive browser, click and network-fingerprint signals to detect scraping and advertising click fraud.</source>
+        <target state="translated">Collects defensive browser, click and network-fingerprint signals to detect scraping and advertising click fraud.</target>
+      </trans-unit>
+      <trans-unit id="aeb90426c4e12f4dafb6e8fdb03c78bf" resname="Are you sure you want to uninstall this module? Stored fraud data will be deleted only if the Back Office uninstall data purge setting is enabled.">
+        <source>Are you sure you want to uninstall this module? Stored fraud data will be deleted only if the Back Office uninstall data purge setting is enabled.</source>
+        <target state="translated">Are you sure you want to uninstall this module? Stored fraud data will be deleted only if the Back Office uninstall data purge setting is enabled.</target>
+      </trans-unit>
+      <trans-unit id="254f642527b45bc260048e30704edb39" resname="Configuration">
+        <source>Configuration</source>
+        <target state="translated">Configuration</target>
+      </trans-unit>
+      <trans-unit id="7b1329f5ca3d485bba602a815ffd4d6d" resname="User manual">
+        <source>User manual</source>
+        <target state="translated">User manual</target>
+      </trans-unit>
+      <trans-unit id="02ce9dd805260e1b5516ad47e183d6af" resname="The manual is included in the module package under docs/.">
+        <source>The manual is included in the module package under docs/.</source>
+        <target state="translated">The manual is included in the module package under docs/.</target>
+      </trans-unit>
+      <trans-unit id="b9f5c797ebbf55adccdd8539a65a0241" resname="Disabled">
+        <source>Disabled</source>
+        <target state="translated">Disabled</target>
+      </trans-unit>
+      <trans-unit id="7a01a554b2fe1ebe7f033013913d66b3" resname="Enable module">
+        <source>Enable module</source>
+        <target state="translated">Enable module</target>
+      </trans-unit>
+      <trans-unit id="0e3245bb38f4d4340aba08b94e8fcfc2" resname="Enables signal collection and risk evaluation for the current shop context.">
+        <source>Enables signal collection and risk evaluation for the current shop context.</source>
+        <target state="translated">Enables signal collection and risk evaluation for the current shop context.</target>
+      </trans-unit>
+      <trans-unit id="3aa43f82fc2f41e3036679584f63fe4f" resname="Operating mode">
+        <source>Operating mode</source>
+        <target state="translated">Operating mode</target>
+      </trans-unit>
+      <trans-unit id="68b50c63032e60f063871c7e69ff48d0" resname="Observe records decisions only. Enable blocking after reviewing logs.">
+        <source>Observe records decisions only. Enable blocking after reviewing logs.</source>
+        <target state="translated">Observe records decisions only. Enable blocking after reviewing logs.</target>
+      </trans-unit>
+      <trans-unit id="8445b549d2c5fd29495d2f17b006add2" resname="Observe only">
+        <source>Observe only</source>
+        <target state="translated">Observe only</target>
+      </trans-unit>
+      <trans-unit id="c7439441373d1ee467c6a7a871a41425" resname="Rate limit">
+        <source>Rate limit</source>
+        <target state="translated">Rate limit</target>
+      </trans-unit>
+      <trans-unit id="ab8cce81744e6f91c23fc2642a03961d" resname="Block high-risk traffic">
+        <source>Block high-risk traffic</source>
+        <target state="translated">Block high-risk traffic</target>
+      </trans-unit>
+      <trans-unit id="6e160c0c60058661c6c5cea38b0a23ba" resname="Log retention days">
+        <source>Log retention days</source>
+        <target state="translated">Log retention days</target>
+      </trans-unit>
+      <trans-unit id="fa44f79f9c3758270103e638a4f4a394" resname="Number of days to keep detailed risk events before cleanup.">
+        <source>Number of days to keep detailed risk events before cleanup.</source>
+        <target state="translated">Number of days to keep detailed risk events before cleanup.</target>
+      </trans-unit>
+      <trans-unit id="9955784ca6185c4d2ffc277cf720fd6e" resname="Admin table refresh interval">
+        <source>Admin table refresh interval</source>
+        <target state="translated">Admin table refresh interval</target>
+      </trans-unit>
+      <trans-unit id="839102f29ce2d0a769d982544f54784c" resname="Controls the Back Office risk events table refresh countdown.">
+        <source>Controls the Back Office risk events table refresh countdown.</source>
+        <target state="translated">Controls the Back Office risk events table refresh countdown.</target>
+      </trans-unit>
+      <trans-unit id="a0c27e6d1ba84177d55cd1b57d077e99" resname="Delete stored fraud data on uninstall">
+        <source>Delete stored fraud data on uninstall</source>
+        <target state="translated">Delete stored fraud data on uninstall</target>
+      </trans-unit>
+      <trans-unit id="1b5303eb8f4969bf4d1028932e15379c" resname="When enabled, uninstalling the module permanently removes fraud events and rate-limit counters. Keep disabled if you want to reinstall or audit historical events later.">
+        <source>When enabled, uninstalling the module permanently removes fraud events and rate-limit counters. Keep disabled if you want to reinstall or audit historical events later.</source>
+        <target state="translated">When enabled, uninstalling the module permanently removes fraud events and rate-limit counters. Keep disabled if you want to reinstall or audit historical events later.</target>
+      </trans-unit>
+      <trans-unit id="9216b173065c91e75828524170907606" resname="Enable JA4 correlation">
+        <source>Enable JA4 correlation</source>
+        <target state="translated">Enable JA4 correlation</target>
+      </trans-unit>
+      <trans-unit id="f83cca9934902e4a7ee0d232da8227a4" resname="Correlates browser fingerprints with TLS/network fingerprints received from a trusted edge proxy.">
+        <source>Correlates browser fingerprints with TLS/network fingerprints received from a trusted edge proxy.</source>
+        <target state="translated">Correlates browser fingerprints with TLS/network fingerprints received from a trusted edge proxy.</target>
+      </trans-unit>
+      <trans-unit id="79b479febf612d73b5553660f9f847ba" resname="Trusted proxy IP addresses">
+        <source>Trusted proxy IP addresses</source>
+        <target state="translated">Trusted proxy IP addresses</target>
+      </trans-unit>
+      <trans-unit id="8f342648541edc11c988a216b1d9eb0e" resname="Use one proxy IP address per line. Add an optional note after a hash sign, for example: 203.0.113.10 # Cloudflare edge node.">
+        <source>Use one proxy IP address per line. Add an optional note after a hash sign, for example: 203.0.113.10 # Cloudflare edge node.</source>
+        <target state="translated">Use one proxy IP address per line. Add an optional note after a hash sign, for example: 203.0.113.10 # Cloudflare edge node.</target>
+      </trans-unit>
+      <trans-unit id="e18472526efa4f19da72054dbb778f9c" resname="JA4 header name">
+        <source>JA4 header name</source>
+        <target state="translated">JA4 header name</target>
+      </trans-unit>
+      <trans-unit id="99c0d0262e8a65ddccecf0e0d305bc26" resname="Internal header set by your CDN, WAF, HAProxy, NGINX or edge worker.">
+        <source>Internal header set by your CDN, WAF, HAProxy, NGINX or edge worker.</source>
+        <target state="translated">Internal header set by your CDN, WAF, HAProxy, NGINX or edge worker.</target>
+      </trans-unit>
+      <trans-unit id="103a2013fe1d5817509fb91c8dd6df1b" resname="JA4H header name">
+        <source>JA4H header name</source>
+        <target state="translated">JA4H header name</target>
+      </trans-unit>
+      <trans-unit id="7d82c179d0b520b8a286483d02b35d8b" resname="Optional internal HTTP fingerprint header set only by trusted infrastructure.">
+        <source>Optional internal HTTP fingerprint header set only by trusted infrastructure.</source>
+        <target state="translated">Optional internal HTTP fingerprint header set only by trusted infrastructure.</target>
+      </trans-unit>
+      <trans-unit id="480d9c23be8267b12431a50b624e2adb" resname="Enable anti-scraping scoring">
+        <source>Enable anti-scraping scoring</source>
+        <target state="translated">Enable anti-scraping scoring</target>
+      </trans-unit>
+      <trans-unit id="40b91d67008e62c99bd75a9b458f6245" resname="Evaluates catalog, search and API request patterns for scraping abuse.">
+        <source>Evaluates catalog, search and API request patterns for scraping abuse.</source>
+        <target state="translated">Evaluates catalog, search and API request patterns for scraping abuse.</target>
+      </trans-unit>
+      <trans-unit id="703e22f2fd9da0783a22fe04cd2a84bb" resname="Product page threshold">
+        <source>Product page threshold</source>
+        <target state="translated">Product page threshold</target>
+      </trans-unit>
+      <trans-unit id="d24e42cf8aa734e20f452582dd687515" resname="Maximum product-like page requests per fingerprint window before risk increases.">
+        <source>Maximum product-like page requests per fingerprint window before risk increases.</source>
+        <target state="translated">Maximum product-like page requests per fingerprint window before risk increases.</target>
+      </trans-unit>
+      <trans-unit id="8cdc1963a2bfef547f43b5c8cdd443c4" resname="Search threshold">
+        <source>Search threshold</source>
+        <target state="translated">Search threshold</target>
+      </trans-unit>
+      <trans-unit id="1989037ca0c3aae4dcff4c585428d32b" resname="Maximum search-like requests per fingerprint window before risk increases.">
+        <source>Maximum search-like requests per fingerprint window before risk increases.</source>
+        <target state="translated">Maximum search-like requests per fingerprint window before risk increases.</target>
+      </trans-unit>
+      <trans-unit id="733e02a20c4aba4fe50225ea50391f13" resname="Enable ad click fraud scoring">
+        <source>Enable ad click fraud scoring</source>
+        <target state="translated">Enable ad click fraud scoring</target>
+      </trans-unit>
+      <trans-unit id="c64f9cf72b4e5122e6c42bc70870cc01" resname="Tracks advertising click identifiers and post-click behavior to flag suspicious paid traffic.">
+        <source>Tracks advertising click identifiers and post-click behavior to flag suspicious paid traffic.</source>
+        <target state="translated">Tracks advertising click identifiers and post-click behavior to flag suspicious paid traffic.</target>
+      </trans-unit>
+      <trans-unit id="d54d45c1439370fe50979d2c52c2bfa3" resname="Temporary block duration in minutes">
+        <source>Temporary block duration in minutes</source>
+        <target state="translated">Temporary block duration in minutes</target>
+      </trans-unit>
+      <trans-unit id="cde1a7f88528b11089b3de4a1884e88d" resname="Used only when block mode is enabled and the risk score reaches the blocking threshold.">
+        <source>Used only when block mode is enabled and the risk score reaches the blocking threshold.</source>
+        <target state="translated">Used only when block mode is enabled and the risk score reaches the blocking threshold.</target>
+      </trans-unit>
+      <trans-unit id="d4dccb8ca2dac4e53c01bd9954755332" resname="Save settings">
+        <source>Save settings</source>
+        <target state="translated">Save settings</target>
+      </trans-unit>
+      <trans-unit id="ece9804c7832fc71682de5133562714d" resname="Invalid operating mode.">
+        <source>Invalid operating mode.</source>
+        <target state="translated">Invalid operating mode.</target>
+      </trans-unit>
+      <trans-unit id="f38f5974cdc23279ffe6d203641a8bdf" resname="Settings updated.">
+        <source>Settings updated.</source>
+        <target state="translated">Settings updated.</target>
+      </trans-unit>
+      <trans-unit id="93cba07454f06a4a960172bbd6e2a435" resname="Yes">
+        <source>Yes</source>
+        <target state="translated">Yes</target>
+      </trans-unit>
+      <trans-unit id="bafd7322c6e97d25b6299b5d6fe8920b" resname="No">
+        <source>No</source>
+        <target state="translated">No</target>
+      </trans-unit>
+      <trans-unit id="b970f73fc453bf4d3d1363de5695dd84" resname="Database installation failed. Temporary tables created during this installation attempt were rolled back.">
+        <source>Database installation failed. Temporary tables created during this installation attempt were rolled back.</source>
+        <target state="translated">Database installation failed. Temporary tables created during this installation attempt were rolled back.</target>
+      </trans-unit>
+      <trans-unit id="2c66b2c4836e4c09b2896e99841dc36e" resname="Configure observe, rate-limit or blocking behavior per shop context.">
+        <source>Configure observe, rate-limit or blocking behavior per shop context.</source>
+        <target state="translated">Configure observe, rate-limit or blocking behavior per shop context.</target>
+      </trans-unit>
+      <trans-unit id="568527a05868dd4a697e5e8b95ad7206" resname="Analytics and reason codes">
+        <source>Analytics and reason codes</source>
+        <target state="translated">Analytics and reason codes</target>
+      </trans-unit>
+      <trans-unit id="1233523ff158f1b83a570e74e0fbe3ef" resname="Detection settings">
+        <source>Detection settings</source>
+        <target state="translated">Detection settings</target>
+      </trans-unit>
+      <trans-unit id="40245c87215224808c4a64361ac6ed35" resname="Network integrations">
+        <source>Network integrations</source>
+        <target state="translated">Network integrations</target>
+      </trans-unit>
+      <trans-unit id="9858f4be3157f9870d04ebf5868351ed" resname="Total events">
+        <source>Total events</source>
+        <target state="translated">Total events</target>
+      </trans-unit>
+      <trans-unit id="a18cbbc680940eb0ba8c3c711e238dab" resname="High-risk events">
+        <source>High-risk events</source>
+        <target state="translated">High-risk events</target>
+      </trans-unit>
+      <trans-unit id="4797aec3cb4d896f464496bdf566b995" resname="Client fingerprints">
+        <source>Client fingerprints</source>
+        <target state="translated">Client fingerprints</target>
+      </trans-unit>
+      <trans-unit id="41f54e76114dfc87c9d1a848af36dd7f" resname="Network fingerprints">
+        <source>Network fingerprints</source>
+        <target state="translated">Network fingerprints</target>
+      </trans-unit>
+      <trans-unit id="c6784cd24d0867a83a11398e48aa4948" resname="Table refresh">
+        <source>Table refresh</source>
+        <target state="translated">Table refresh</target>
+      </trans-unit>
+      <trans-unit id="5aa9e56afd2d3053d8df04f251f7ffa8" resname="Refresh interval">
+        <source>Refresh interval</source>
+        <target state="translated">Refresh interval</target>
+      </trans-unit>
+      <trans-unit id="3ffa57fde7698fd1b31e084214e74876" resname="Next refresh">
+        <source>Next refresh</source>
+        <target state="translated">Next refresh</target>
+      </trans-unit>
+      <trans-unit id="f33c3288ca7220cfc55f415ef06d0653" resname="Recent risk events">
+        <source>Recent risk events</source>
+        <target state="translated">Recent risk events</target>
+      </trans-unit>
+      <trans-unit id="44749712dbec183e983dcd78a7736c41" resname="Date">
+        <source>Date</source>
+        <target state="translated">Date</target>
+      </trans-unit>
+      <trans-unit id="5e85ed076f5456823d69c290bb7b3e07" resname="Event type">
+        <source>Event type</source>
+        <target state="translated">Event type</target>
+      </trans-unit>
+      <trans-unit id="59ca88f7b0e80cdd9af330af600a9ff6" resname="Risk">
+        <source>Risk</source>
+        <target state="translated">Risk</target>
+      </trans-unit>
+      <trans-unit id="5d30f54fc5f12894fd1afbf4d41c5969" resname="Decision">
+        <source>Decision</source>
+        <target state="translated">Decision</target>
+      </trans-unit>
+      <trans-unit id="781dc97dc62331eec3ea9ec4373a3ca8" resname="Channel">
+        <source>Channel</source>
+        <target state="translated">Channel</target>
+      </trans-unit>
+      <trans-unit id="f00a1d99f6f47917006e88a803ecde1f" resname="Campaign">
+        <source>Campaign</source>
+        <target state="translated">Campaign</target>
+      </trans-unit>
+      <trans-unit id="2f638ae4074aa3eac298a6261fb067d7" resname="Reason codes">
+        <source>Reason codes</source>
+        <target state="translated">Reason codes</target>
+      </trans-unit>
+      <trans-unit id="b75a207148b6a5188dbe8e3f31170a67" resname="No events have been recorded yet.">
+        <source>No events have been recorded yet.</source>
+        <target state="translated">No events have been recorded yet.</target>
+      </trans-unit>
+      <trans-unit id="16bdcc6435c82b111df6e9955ca945dc" resname="JA4 and trusted proxy integration">
+        <source>JA4 and trusted proxy integration</source>
+        <target state="translated">JA4 and trusted proxy integration</target>
+      </trans-unit>
+      <trans-unit id="a1b232a1516987cfc7d45c3dc64cb459" resname="JA4 and JA4H headers are accepted only when the request comes from a trusted proxy IP address configured in Detection settings.">
+        <source>JA4 and JA4H headers are accepted only when the request comes from a trusted proxy IP address configured in Detection settings.</source>
+        <target state="translated">JA4 and JA4H headers are accepted only when the request comes from a trusted proxy IP address configured in Detection settings.</target>
+      </trans-unit>
+      <trans-unit id="d1b13c5d11f7e185ed950e6c300acd2a" resname="Each trusted proxy line can include an optional note after a hash sign.">
+        <source>Each trusted proxy line can include an optional note after a hash sign.</source>
+        <target state="translated">Each trusted proxy line can include an optional note after a hash sign.</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

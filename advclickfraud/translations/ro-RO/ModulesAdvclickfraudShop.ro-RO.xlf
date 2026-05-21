@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file original="modules/advclickfraud" source-language="en-US" target-language="ro-RO" datatype="plaintext">
+    <body>
+      <trans-unit id="82a6da76eef0626ae8cac45f5f5a5130" resname="Fraud protection pixel">
+        <source>Fraud protection pixel</source>
+        <target state="translated">Pixel de protecție împotriva fraudei</target>
+      </trans-unit>
+      <trans-unit id="62a8a0c5a7466603690efa4bdfe059d3" resname="Too many requests. Please try again later.">
+        <source>Too many requests. Please try again later.</source>
+        <target state="translated">Prea multe cereri. Te rugăm să încerci din nou mai târziu.</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>
