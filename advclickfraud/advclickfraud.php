@@ -88,14 +88,13 @@ class AdvClickFraud extends Module
     public function hookActionFrontControllerSetMedia(array $params): void
     {
         unset($params);
-        if (!$this->isEnabledForCurrentShop()) {
-            return;
+        if ($this->isEnabledForCurrentShop()) {
+            $this->context->controller->registerJavascript(
+                'module-advclickfraud-front',
+                'modules/' . $this->name . '/views/js/front.js',
+                ['position' => 'bottom', 'priority' => 250]
+            );
         }
-        $this->context->controller->registerJavascript(
-            'module-advclickfraud-front',
-            'modules/' . $this->name . '/views/js/front.js',
-            ['position' => 'bottom', 'priority' => 250]
-        );
     }
 
     public function hookDisplayHeader(array $params): string
@@ -150,6 +149,7 @@ class AdvClickFraud extends Module
     public function hookModuleRoutes(array $params): array
     {
         unset($params);
+
         return [
             'module-advclickfraud-collect' => [
                 'controller' => 'collect',
@@ -168,14 +168,20 @@ class AdvClickFraud extends Module
 
     public function storeClientEvent(array $payload): bool
     {
-        $clientFingerprint = $this->fingerprintPayload($payload);
-        $networkFingerprint = $this->networkFingerprint();
         $decision = $this->evaluateClientPayload($payload);
 
-        return $this->insertEvent('client_collect', $clientFingerprint, $networkFingerprint, $decision['risk'], $decision['decision'], $decision['reasons'], [
-            'page_type' => isset($payload['pageType']) && is_scalar($payload['pageType']) ? (string) $payload['pageType'] : 'page',
-            'click_ids' => $this->extractClickIdentifiers($payload),
-        ]);
+        return $this->insertEvent(
+            'client_collect',
+            $this->fingerprintPayload($payload),
+            $this->networkFingerprint(),
+            $decision['risk'],
+            'observe',
+            $decision['reasons'],
+            [
+                'page_type' => isset($payload['pageType']) && is_scalar($payload['pageType']) ? (string) $payload['pageType'] : 'page',
+                'click_ids' => $this->extractClickIdentifiers($payload),
+            ]
+        );
     }
 
     public function storePixelEvent(string $requestId): bool
@@ -202,10 +208,7 @@ class AdvClickFraud extends Module
 
     public function hmac(string $value): string
     {
-        $secret = $this->getConfig(self::CFG_SECRET);
-        if ($secret === '') {
-            $secret = _COOKIE_KEY_;
-        }
+        $secret = $this->getConfig(self::CFG_SECRET) ?: _COOKIE_KEY_;
 
         return hash_hmac('sha256', $value, $secret);
     }
@@ -232,18 +235,18 @@ class AdvClickFraud extends Module
         return ['form' => [
             'legend' => ['title' => $this->trans('Advanced Click Fraud Protection', [], self::DOMAIN_ADMIN), 'icon' => 'icon-shield'],
             'input' => [
-                $this->switchField(self::CFG_ENABLED, 'Enable module', 'Enables signal collection and risk evaluation for the current shop context.'),
+                $this->switchField(self::CFG_ENABLED, $this->trans('Enable module', [], self::DOMAIN_ADMIN), $this->trans('Enables signal collection and risk evaluation for the current shop context.', [], self::DOMAIN_ADMIN)),
                 ['type' => 'select', 'label' => $this->trans('Operating mode', [], self::DOMAIN_ADMIN), 'name' => self::CFG_MODE, 'desc' => $this->trans('Observe records decisions only. Enable blocking after reviewing logs.', [], self::DOMAIN_ADMIN), 'options' => ['query' => [['id' => 'observe', 'name' => $this->trans('Observe only', [], self::DOMAIN_ADMIN)], ['id' => 'rate_limit', 'name' => $this->trans('Rate limit', [], self::DOMAIN_ADMIN)], ['id' => 'block', 'name' => $this->trans('Block high-risk traffic', [], self::DOMAIN_ADMIN)]], 'id' => 'id', 'name' => 'name']],
-                $this->textField(self::CFG_RETENTION_DAYS, 'Log retention days', 'Number of days to keep detailed risk events before cleanup.', '30'),
-                $this->switchField(self::CFG_ENABLE_JA4, 'Enable JA4 correlation', 'Correlates browser fingerprints with TLS/network fingerprints received from a trusted edge proxy.'),
-                $this->textareaField(self::CFG_TRUSTED_PROXIES, 'Trusted proxy IP addresses', 'One proxy IP address per line. JA4 headers are ignored unless the request comes from this list.', "203.0.113.10\n198.51.100.10"),
-                $this->textField(self::CFG_JA4_HEADER, 'JA4 header name', 'Internal header set by your CDN, WAF, HAProxy, NGINX or edge worker.', 'X-AdvCF-JA4'),
-                $this->textField(self::CFG_JA4H_HEADER, 'JA4H header name', 'Optional internal HTTP fingerprint header set only by trusted infrastructure.', 'X-AdvCF-JA4H'),
-                $this->switchField(self::CFG_ENABLE_SCRAPING, 'Enable anti-scraping scoring', 'Evaluates catalog, search and API request patterns for scraping abuse.'),
-                $this->textField(self::CFG_PRODUCT_THRESHOLD, 'Product page threshold', 'Maximum product-like page requests per fingerprint window before risk increases.', '120'),
-                $this->textField(self::CFG_SEARCH_THRESHOLD, 'Search threshold', 'Maximum search-like requests per fingerprint window before risk increases.', '50'),
-                $this->switchField(self::CFG_ENABLE_CLICK_FRAUD, 'Enable ad click fraud scoring', 'Tracks advertising click identifiers and post-click behavior to flag suspicious paid traffic.'),
-                $this->textField(self::CFG_BLOCK_MINUTES, 'Temporary block duration in minutes', 'Used only when block mode is enabled and the risk score reaches the blocking threshold.', '15'),
+                $this->textField(self::CFG_RETENTION_DAYS, $this->trans('Log retention days', [], self::DOMAIN_ADMIN), $this->trans('Number of days to keep detailed risk events before cleanup.', [], self::DOMAIN_ADMIN), '30'),
+                $this->switchField(self::CFG_ENABLE_JA4, $this->trans('Enable JA4 correlation', [], self::DOMAIN_ADMIN), $this->trans('Correlates browser fingerprints with TLS/network fingerprints received from a trusted edge proxy.', [], self::DOMAIN_ADMIN)),
+                $this->textareaField(self::CFG_TRUSTED_PROXIES, $this->trans('Trusted proxy IP addresses', [], self::DOMAIN_ADMIN), $this->trans('Use one proxy IP address per line. Add an optional note after a hash sign, for example: 203.0.113.10 # Cloudflare edge node.', [], self::DOMAIN_ADMIN), "203.0.113.10 # Cloudflare edge\n198.51.100.10 # HAProxy node 1"),
+                $this->textField(self::CFG_JA4_HEADER, $this->trans('JA4 header name', [], self::DOMAIN_ADMIN), $this->trans('Internal header set by your CDN, WAF, HAProxy, NGINX or edge worker.', [], self::DOMAIN_ADMIN), 'X-AdvCF-JA4'),
+                $this->textField(self::CFG_JA4H_HEADER, $this->trans('JA4H header name', [], self::DOMAIN_ADMIN), $this->trans('Optional internal HTTP fingerprint header set only by trusted infrastructure.', [], self::DOMAIN_ADMIN), 'X-AdvCF-JA4H'),
+                $this->switchField(self::CFG_ENABLE_SCRAPING, $this->trans('Enable anti-scraping scoring', [], self::DOMAIN_ADMIN), $this->trans('Evaluates catalog, search and API request patterns for scraping abuse.', [], self::DOMAIN_ADMIN)),
+                $this->textField(self::CFG_PRODUCT_THRESHOLD, $this->trans('Product page threshold', [], self::DOMAIN_ADMIN), $this->trans('Maximum product-like page requests per fingerprint window before risk increases.', [], self::DOMAIN_ADMIN), '120'),
+                $this->textField(self::CFG_SEARCH_THRESHOLD, $this->trans('Search threshold', [], self::DOMAIN_ADMIN), $this->trans('Maximum search-like requests per fingerprint window before risk increases.', [], self::DOMAIN_ADMIN), '50'),
+                $this->switchField(self::CFG_ENABLE_CLICK_FRAUD, $this->trans('Enable ad click fraud scoring', [], self::DOMAIN_ADMIN), $this->trans('Tracks advertising click identifiers and post-click behavior to flag suspicious paid traffic.', [], self::DOMAIN_ADMIN)),
+                $this->textField(self::CFG_BLOCK_MINUTES, $this->trans('Temporary block duration in minutes', [], self::DOMAIN_ADMIN), $this->trans('Used only when block mode is enabled and the risk score reaches the blocking threshold.', [], self::DOMAIN_ADMIN), '15'),
             ],
             'submit' => ['title' => $this->trans('Save settings', [], self::DOMAIN_ADMIN)],
         ]];
@@ -256,7 +259,16 @@ class AdvClickFraud extends Module
             return $this->displayError($this->trans('Invalid operating mode.', [], self::DOMAIN_ADMIN));
         }
 
-        $values = [
+        foreach ($this->submittedConfigurationValues($mode) as $key => $value) {
+            $this->setConfig($key, $value);
+        }
+
+        return $this->displayConfirmation($this->trans('Settings updated.', [], self::DOMAIN_ADMIN));
+    }
+
+    private function submittedConfigurationValues(string $mode): array
+    {
+        return [
             self::CFG_ENABLED => (string) (int) Tools::getValue(self::CFG_ENABLED),
             self::CFG_MODE => $mode,
             self::CFG_RETENTION_DAYS => (string) max(1, (int) Tools::getValue(self::CFG_RETENTION_DAYS, 30)),
@@ -270,37 +282,31 @@ class AdvClickFraud extends Module
             self::CFG_ENABLE_CLICK_FRAUD => (string) (int) Tools::getValue(self::CFG_ENABLE_CLICK_FRAUD),
             self::CFG_BLOCK_MINUTES => (string) max(1, (int) Tools::getValue(self::CFG_BLOCK_MINUTES, 15)),
         ];
-
-        foreach ($values as $key => $value) {
-            $this->setConfig($key, $value);
-        }
-
-        return $this->displayConfirmation($this->trans('Settings updated.', [], self::DOMAIN_ADMIN));
     }
 
     private function configurationValues(): array
     {
-        $keys = [self::CFG_ENABLED, self::CFG_MODE, self::CFG_RETENTION_DAYS, self::CFG_ENABLE_JA4, self::CFG_TRUSTED_PROXIES, self::CFG_JA4_HEADER, self::CFG_JA4H_HEADER, self::CFG_ENABLE_SCRAPING, self::CFG_PRODUCT_THRESHOLD, self::CFG_SEARCH_THRESHOLD, self::CFG_ENABLE_CLICK_FRAUD, self::CFG_BLOCK_MINUTES];
         $values = [];
-        foreach ($keys as $key) {
+        foreach ([self::CFG_ENABLED, self::CFG_MODE, self::CFG_RETENTION_DAYS, self::CFG_ENABLE_JA4, self::CFG_TRUSTED_PROXIES, self::CFG_JA4_HEADER, self::CFG_JA4H_HEADER, self::CFG_ENABLE_SCRAPING, self::CFG_PRODUCT_THRESHOLD, self::CFG_SEARCH_THRESHOLD, self::CFG_ENABLE_CLICK_FRAUD, self::CFG_BLOCK_MINUTES] as $key) {
             $values[$key] = $this->getConfig($key);
         }
+
         return $values;
     }
 
     private function switchField(string $name, string $label, string $description): array
     {
-        return ['type' => 'switch', 'label' => $this->trans($label, [], self::DOMAIN_ADMIN), 'name' => $name, 'desc' => $this->trans($description, [], self::DOMAIN_ADMIN), 'values' => [['id' => $name . '_on', 'value' => 1, 'label' => $this->trans('Yes', [], self::DOMAIN_ADMIN)], ['id' => $name . '_off', 'value' => 0, 'label' => $this->trans('No', [], self::DOMAIN_ADMIN)]]];
+        return ['type' => 'switch', 'label' => $label, 'name' => $name, 'desc' => $description, 'values' => [['id' => $name . '_on', 'value' => 1, 'label' => $this->trans('Yes', [], self::DOMAIN_ADMIN)], ['id' => $name . '_off', 'value' => 0, 'label' => $this->trans('No', [], self::DOMAIN_ADMIN)]]];
     }
 
     private function textField(string $name, string $label, string $description, string $placeholder): array
     {
-        return ['type' => 'text', 'label' => $this->trans($label, [], self::DOMAIN_ADMIN), 'name' => $name, 'desc' => $this->trans($description, [], self::DOMAIN_ADMIN), 'placeholder' => $placeholder];
+        return ['type' => 'text', 'label' => $label, 'name' => $name, 'desc' => $description, 'placeholder' => $placeholder];
     }
 
     private function textareaField(string $name, string $label, string $description, string $placeholder): array
     {
-        return ['type' => 'textarea', 'label' => $this->trans($label, [], self::DOMAIN_ADMIN), 'name' => $name, 'desc' => $this->trans($description, [], self::DOMAIN_ADMIN), 'placeholder' => $placeholder, 'cols' => 60, 'rows' => 4];
+        return ['type' => 'textarea', 'label' => $label, 'name' => $name, 'desc' => $description, 'placeholder' => $placeholder, 'cols' => 70, 'rows' => 5];
     }
 
     private function installConfiguration(): bool
@@ -315,6 +321,7 @@ class AdvClickFraud extends Module
                 return false;
             }
         }
+
         return true;
     }
 
@@ -323,6 +330,7 @@ class AdvClickFraud extends Module
         foreach ([self::CFG_ENABLED, self::CFG_MODE, self::CFG_SECRET, self::CFG_RETENTION_DAYS, self::CFG_ENABLE_SCRAPING, self::CFG_ENABLE_CLICK_FRAUD, self::CFG_ENABLE_JA4, self::CFG_TRUSTED_PROXIES, self::CFG_JA4_HEADER, self::CFG_JA4H_HEADER, self::CFG_PRODUCT_THRESHOLD, self::CFG_SEARCH_THRESHOLD, self::CFG_BLOCK_MINUTES] as $key) {
             Configuration::deleteByName($key);
         }
+
         return true;
     }
 
@@ -330,6 +338,7 @@ class AdvClickFraud extends Module
     {
         $eventSql = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'advclickfraud_event` (`id_advclickfraud_event` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, `id_shop` INT UNSIGNED NOT NULL DEFAULT 0, `event_type` VARCHAR(64) NOT NULL, `request_id` VARCHAR(64) NOT NULL, `client_fingerprint` CHAR(64) NULL, `network_fingerprint` CHAR(64) NULL, `risk_score` TINYINT UNSIGNED NOT NULL DEFAULT 0, `decision` VARCHAR(32) NOT NULL DEFAULT "observe", `reason_codes` TEXT NULL, `payload` TEXT NULL, `ip_hash` CHAR(64) NULL, `user_agent_hash` CHAR(64) NULL, `date_add` DATETIME NOT NULL, PRIMARY KEY (`id_advclickfraud_event`), KEY `idx_shop_date` (`id_shop`, `date_add`), KEY `idx_client` (`client_fingerprint`), KEY `idx_network` (`network_fingerprint`)) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4;';
         $rateSql = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'advclickfraud_rate_limit` (`id_advclickfraud_rate_limit` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, `id_shop` INT UNSIGNED NOT NULL DEFAULT 0, `scope_hash` CHAR(64) NOT NULL, `route_type` VARCHAR(32) NOT NULL, `hits` INT UNSIGNED NOT NULL DEFAULT 0, `window_start` DATETIME NOT NULL, `date_upd` DATETIME NOT NULL, PRIMARY KEY (`id_advclickfraud_rate_limit`), UNIQUE KEY `uniq_scope_route_window` (`id_shop`, `scope_hash`, `route_type`, `window_start`)) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4;';
+
         return Db::getInstance()->execute($eventSql) && Db::getInstance()->execute($rateSql);
     }
 
@@ -343,6 +352,7 @@ class AdvClickFraud extends Module
         $score = 0;
         $reasons = [];
         $route = $this->resolvePageType();
+
         if ((bool) (int) $this->getConfig(self::CFG_ENABLE_SCRAPING)) {
             $hits = $this->incrementRateLimit($this->hmac((string) ($_SERVER['REMOTE_ADDR'] ?? '') . '|' . (string) ($_SERVER['HTTP_USER_AGENT'] ?? '')), $route);
             $threshold = $route === 'search' ? (int) $this->getConfig(self::CFG_SEARCH_THRESHOLD) : (int) $this->getConfig(self::CFG_PRODUCT_THRESHOLD);
@@ -351,19 +361,20 @@ class AdvClickFraud extends Module
                 $reasons[] = 'route_velocity_threshold_exceeded';
             }
         }
+
         if ($this->hasAutomationUserAgent()) {
             $score += 25;
             $reasons[] = 'suspicious_automation_user_agent';
         }
-        $mode = $this->getConfig(self::CFG_MODE);
+
         $action = 'observe';
-        if ($mode === 'rate_limit' && $score >= 70) {
+        $mode = $this->getConfig(self::CFG_MODE);
+        if (($mode === 'rate_limit' && $score >= 70) || ($mode === 'block' && $score >= 85)) {
             $action = 'block';
         }
-        if ($mode === 'block' && $score >= 85) {
-            $action = 'block';
-        }
+
         $this->insertEvent('server_request', null, $this->networkFingerprint(), min(100, $score), $action, $reasons, ['route' => $route]);
+
         return ['action' => $action, 'risk' => min(100, $score), 'reasons' => $reasons];
     }
 
@@ -373,6 +384,7 @@ class AdvClickFraud extends Module
         $reasons = [];
         $signals = isset($payload['signals']) && is_array($payload['signals']) ? $payload['signals'] : [];
         $behavior = isset($payload['behavior']) && is_array($payload['behavior']) ? $payload['behavior'] : [];
+
         if (!empty($signals['webdriver'])) {
             $score += 35;
             $reasons[] = 'webdriver_flag_present';
@@ -385,7 +397,8 @@ class AdvClickFraud extends Module
             $score += 15;
             $reasons[] = 'very_fast_first_interaction';
         }
-        return ['risk' => min(100, $score), 'decision' => 'observe', 'reasons' => $reasons];
+
+        return ['risk' => min(100, $score), 'reasons' => $reasons];
     }
 
     private function insertEvent(string $type, ?string $clientFingerprint, ?string $networkFingerprint, int $risk, string $decision, array $reasons, array $payload): bool
@@ -411,6 +424,7 @@ class AdvClickFraud extends Module
         $windowStart = date('Y-m-d H:i:00', (int) floor(time() / 300) * 300);
         $sql = 'INSERT INTO `' . _DB_PREFIX_ . 'advclickfraud_rate_limit` (`id_shop`, `scope_hash`, `route_type`, `hits`, `window_start`, `date_upd`) VALUES (' . (int) $this->context->shop->id . ', "' . pSQL($scopeHash) . '", "' . pSQL($route) . '", 1, "' . pSQL($windowStart) . '", "' . pSQL(date('Y-m-d H:i:s')) . '") ON DUPLICATE KEY UPDATE `hits` = `hits` + 1, `date_upd` = VALUES(`date_upd`)';
         Db::getInstance()->execute($sql);
+
         return (int) Db::getInstance()->getValue('SELECT `hits` FROM `' . _DB_PREFIX_ . 'advclickfraud_rate_limit` WHERE `id_shop` = ' . (int) $this->context->shop->id . ' AND `scope_hash` = "' . pSQL($scopeHash) . '" AND `route_type` = "' . pSQL($route) . '" AND `window_start` = "' . pSQL($windowStart) . '"');
     }
 
@@ -419,6 +433,7 @@ class AdvClickFraud extends Module
         if (!isset($payload['signals']) || !is_array($payload['signals'])) {
             return null;
         }
+
         $signals = $payload['signals'];
         $normalized = [];
         foreach (['uaJs', 'platform', 'timezone', 'locale', 'screenBucket', 'dprBucket', 'canvas', 'webgl'] as $key) {
@@ -426,6 +441,7 @@ class AdvClickFraud extends Module
         }
         $normalized['touch'] = !empty($signals['touch']);
         $normalized['webdriver'] = !empty($signals['webdriver']);
+
         return $this->hmac(json_encode($normalized));
     }
 
@@ -434,26 +450,43 @@ class AdvClickFraud extends Module
         if (!(bool) (int) $this->getConfig(self::CFG_ENABLE_JA4) || !$this->isTrustedProxyRequest()) {
             return null;
         }
+
         $ja4 = $this->trustedHeader($this->getConfig(self::CFG_JA4_HEADER));
         $ja4h = $this->trustedHeader($this->getConfig(self::CFG_JA4H_HEADER));
+
         return ($ja4 || $ja4h) ? $this->hmac((string) $ja4 . '|' . (string) $ja4h) : null;
     }
 
     private function trustedHeader(string $headerName): ?string
     {
         $key = 'HTTP_' . strtoupper(str_replace('-', '_', trim($headerName)));
+
         return isset($_SERVER[$key]) && is_scalar($_SERVER[$key]) ? substr((string) $_SERVER[$key], 0, 255) : null;
     }
 
     private function isTrustedProxyRequest(): bool
     {
         $remoteAddress = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
-        foreach (preg_split('/\R+/', $this->getConfig(self::CFG_TRUSTED_PROXIES)) ?: [] as $proxy) {
-            if (trim($proxy) === $remoteAddress) {
+        foreach (preg_split('/\R+/', $this->getConfig(self::CFG_TRUSTED_PROXIES)) ?: [] as $line) {
+            $trustedAddress = $this->trustedProxyAddressFromLine((string) $line);
+            if ($trustedAddress !== '' && hash_equals($trustedAddress, $remoteAddress)) {
                 return true;
             }
         }
+
         return false;
+    }
+
+    private function trustedProxyAddressFromLine(string $line): string
+    {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#')) {
+            return '';
+        }
+
+        $address = trim(explode('#', $line, 2)[0]);
+
+        return filter_var($address, FILTER_VALIDATE_IP) ? $address : '';
     }
 
     private function extractClickIdentifiers(array $payload): array
@@ -465,6 +498,7 @@ class AdvClickFraud extends Module
                 $result[$key] = substr((string) $query[$key], 0, 255);
             }
         }
+
         return $result;
     }
 
@@ -488,6 +522,7 @@ class AdvClickFraud extends Module
                 return true;
             }
         }
+
         return false;
     }
 
@@ -499,6 +534,7 @@ class AdvClickFraud extends Module
                 return true;
             }
         }
+
         return false;
     }
 
@@ -507,11 +543,13 @@ class AdvClickFraud extends Module
         $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
         if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
             $parts = explode('.', $ip);
+
             return implode('.', array_slice($parts, 0, 3)) . '.0';
         }
         if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
             return implode(':', array_slice(explode(':', $ip), 0, 4));
         }
+
         return 'unknown';
     }
 
