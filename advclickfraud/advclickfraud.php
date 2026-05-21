@@ -80,6 +80,8 @@ class AdvClickFraud extends Module
             'panel_title' => $this->trans('Configuration', [], self::DOMAIN_ADMIN),
             'manual_title' => $this->trans('User manual', [], self::DOMAIN_ADMIN),
             'manual_help' => $this->trans('The manual is included in the module package under docs/.', [], self::DOMAIN_ADMIN),
+            'stats' => $this->dashboardStats(),
+            'recent_events' => $this->recentEvents(),
         ]);
 
         return $output . $this->display(__FILE__, 'views/templates/admin/configure.tpl');
@@ -179,6 +181,7 @@ class AdvClickFraud extends Module
             $decision['reasons'],
             [
                 'page_type' => isset($payload['pageType']) && is_scalar($payload['pageType']) ? (string) $payload['pageType'] : 'page',
+                'attribution' => $this->extractAttribution($payload),
                 'click_ids' => $this->extractClickIdentifiers($payload),
             ]
         );
@@ -384,6 +387,7 @@ class AdvClickFraud extends Module
         $reasons = [];
         $signals = isset($payload['signals']) && is_array($payload['signals']) ? $payload['signals'] : [];
         $behavior = isset($payload['behavior']) && is_array($payload['behavior']) ? $payload['behavior'] : [];
+        $attribution = $this->extractAttribution($payload);
 
         if (!empty($signals['webdriver'])) {
             $score += 35;
@@ -396,6 +400,10 @@ class AdvClickFraud extends Module
         if (isset($behavior['timeToFirstInteractionMs']) && (int) $behavior['timeToFirstInteractionMs'] > 0 && (int) $behavior['timeToFirstInteractionMs'] < 100) {
             $score += 15;
             $reasons[] = 'very_fast_first_interaction';
+        }
+        if (!empty($attribution['is_paid_click']) && empty($behavior['hadInteraction'])) {
+            $score += 15;
+            $reasons[] = 'paid_click_without_observed_interaction';
         }
 
         return ['risk' => min(100, $score), 'reasons' => $reasons];
@@ -489,17 +497,98 @@ class AdvClickFraud extends Module
         return filter_var($address, FILTER_VALIDATE_IP) ? $address : '';
     }
 
+    private function extractAttribution(array $payload): array
+    {
+        $attribution = isset($payload['attribution']) && is_array($payload['attribution']) ? $payload['attribution'] : [];
+        $query = isset($payload['query']) && is_array($payload['query']) ? $payload['query'] : [];
+        $channel = isset($attribution['channel']) && is_scalar($attribution['channel']) ? (string) $attribution['channel'] : $this->classifyChannelFromQuery($query);
+
+        return [
+            'is_paid_click' => !empty($attribution['isPaidClick']) || $this->hasPaidClickInQuery($query),
+            'channel' => substr($channel, 0, 64),
+            'click_id_type' => isset($attribution['clickIdType']) && is_scalar($attribution['clickIdType']) ? substr((string) $attribution['clickIdType'], 0, 32) : '',
+            'campaign' => isset($attribution['campaign']) && is_scalar($attribution['campaign']) ? substr((string) $attribution['campaign'], 0, 128) : '',
+            'medium' => isset($attribution['medium']) && is_scalar($attribution['medium']) ? substr((string) $attribution['medium'], 0, 64) : '',
+            'content' => isset($attribution['content']) && is_scalar($attribution['content']) ? substr((string) $attribution['content'], 0, 128) : '',
+            'term' => isset($attribution['term']) && is_scalar($attribution['term']) ? substr((string) $attribution['term'], 0, 128) : '',
+        ];
+    }
+
     private function extractClickIdentifiers(array $payload): array
     {
         $result = [];
         $query = isset($payload['query']) && is_array($payload['query']) ? $payload['query'] : [];
-        foreach (['gclid', 'fbclid', 'ttclid', 'msclkid', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content'] as $key) {
+        foreach (['gclid', 'wbraid', 'gbraid', 'fbclid', 'ttclid', 'msclkid', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as $key) {
             if (isset($query[$key]) && is_scalar($query[$key])) {
                 $result[$key] = substr((string) $query[$key], 0, 255);
             }
         }
 
         return $result;
+    }
+
+    private function classifyChannelFromQuery(array $query): string
+    {
+        if (!empty($query['gclid']) || !empty($query['wbraid']) || !empty($query['gbraid'])) {
+            return 'google_ads';
+        }
+        if (!empty($query['fbclid'])) {
+            return 'meta_ads';
+        }
+        if (!empty($query['ttclid'])) {
+            return 'tiktok_ads';
+        }
+        if (!empty($query['msclkid'])) {
+            return 'microsoft_ads';
+        }
+        if (!empty($query['utm_source']) && is_scalar($query['utm_source'])) {
+            return substr((string) $query['utm_source'], 0, 64);
+        }
+
+        return 'organic_or_direct';
+    }
+
+    private function hasPaidClickInQuery(array $query): bool
+    {
+        foreach (['gclid', 'wbraid', 'gbraid', 'fbclid', 'ttclid', 'msclkid', 'utm_source'] as $key) {
+            if (!empty($query[$key])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function dashboardStats(): array
+    {
+        $table = _DB_PREFIX_ . 'advclickfraud_event';
+        $shopId = (int) $this->context->shop->id;
+
+        return [
+            'total_events' => (int) Db::getInstance()->getValue('SELECT COUNT(*) FROM `' . pSQL($table) . '` WHERE `id_shop` = ' . $shopId),
+            'high_risk_events' => (int) Db::getInstance()->getValue('SELECT COUNT(*) FROM `' . pSQL($table) . '` WHERE `id_shop` = ' . $shopId . ' AND `risk_score` >= 70'),
+            'client_fingerprints' => (int) Db::getInstance()->getValue('SELECT COUNT(DISTINCT `client_fingerprint`) FROM `' . pSQL($table) . '` WHERE `id_shop` = ' . $shopId . ' AND `client_fingerprint` IS NOT NULL'),
+            'network_fingerprints' => (int) Db::getInstance()->getValue('SELECT COUNT(DISTINCT `network_fingerprint`) FROM `' . pSQL($table) . '` WHERE `id_shop` = ' . $shopId . ' AND `network_fingerprint` IS NOT NULL'),
+        ];
+    }
+
+    private function recentEvents(): array
+    {
+        $rows = Db::getInstance()->executeS('SELECT `event_type`, `risk_score`, `decision`, `reason_codes`, `payload`, `date_add` FROM `' . _DB_PREFIX_ . 'advclickfraud_event` WHERE `id_shop` = ' . (int) $this->context->shop->id . ' ORDER BY `date_add` DESC LIMIT 10');
+        if (!is_array($rows)) {
+            return [];
+        }
+
+        foreach ($rows as &$row) {
+            $payload = json_decode((string) $row['payload'], true);
+            $reasons = json_decode((string) $row['reason_codes'], true);
+            $row['channel'] = is_array($payload) && isset($payload['attribution']['channel']) ? (string) $payload['attribution']['channel'] : '';
+            $row['campaign'] = is_array($payload) && isset($payload['attribution']['campaign']) ? (string) $payload['attribution']['campaign'] : '';
+            $row['reason_list'] = is_array($reasons) ? implode(', ', $reasons) : '';
+        }
+        unset($row);
+
+        return $rows;
     }
 
     private function resolvePageType(): string
@@ -517,7 +606,7 @@ class AdvClickFraud extends Module
 
     private function hasAdClickIdentifier(): bool
     {
-        foreach (['gclid', 'fbclid', 'ttclid', 'msclkid'] as $key) {
+        foreach (['gclid', 'wbraid', 'gbraid', 'fbclid', 'ttclid', 'msclkid'] as $key) {
             if (Tools::getValue($key) !== false) {
                 return true;
             }
