@@ -410,15 +410,18 @@ class AdvClickFraud extends Module
             $reasons[] = 'suspicious_automation_user_agent';
         }
 
+        $riskScore = min(100, $score);
         $action = 'observe';
         $mode = $this->getConfig(self::CFG_MODE);
-        if (($mode === 'rate_limit' && $score >= 70) || ($mode === 'block' && $score >= 85)) {
+        if (($mode === 'rate_limit' && $riskScore >= 70) || ($mode === 'block' && $riskScore >= 85)) {
             $action = 'block';
         }
 
-        $this->insertEvent('server_request', null, $this->networkFingerprint(), min(100, $score), $action, $reasons, ['route' => $route]);
+        if ($riskScore > 0 || $action !== 'observe') {
+            $this->insertEvent('server_request', null, $this->networkFingerprint(), $riskScore, $action, $reasons, ['route' => $route]);
+        }
 
-        return ['action' => $action, 'risk' => min(100, $score), 'reasons' => $reasons];
+        return ['action' => $action, 'risk' => $riskScore, 'reasons' => $reasons];
     }
 
     private function evaluateClientPayload(array $payload): array
@@ -451,29 +454,32 @@ class AdvClickFraud extends Module
 
     private function insertEvent(string $type, ?string $clientFingerprint, ?string $networkFingerprint, int $risk, string $decision, array $reasons, array $payload): bool
     {
+        $now = date('Y-m-d H:i:s');
+
         return Db::getInstance()->insert('advclickfraud_event', [
             'id_shop' => (int) $this->context->shop->id,
-            'event_type' => pSQL($type),
-            'request_id' => pSQL($this->getRequestId()),
-            'client_fingerprint' => $clientFingerprint !== null ? pSQL($clientFingerprint) : null,
-            'network_fingerprint' => $networkFingerprint !== null ? pSQL($networkFingerprint) : null,
+            'event_type' => pSQL(substr($type, 0, 64)),
+            'request_id' => pSQL(substr($this->getRequestId(), 0, 64)),
+            'client_fingerprint' => $clientFingerprint !== null ? pSQL(substr($clientFingerprint, 0, 64)) : null,
+            'network_fingerprint' => $networkFingerprint !== null ? pSQL(substr($networkFingerprint, 0, 64)) : null,
             'risk_score' => max(0, min(100, $risk)),
-            'decision' => pSQL($decision),
-            'reason_codes' => pSQL(json_encode($reasons), true),
-            'payload' => pSQL(json_encode($payload), true),
+            'decision' => pSQL(substr($decision, 0, 32)),
+            'reason_codes' => pSQL($this->safeJson($reasons), true),
+            'payload' => pSQL($this->safeJson($payload), true),
             'ip_hash' => pSQL($this->hmac($this->ipPrefix())),
             'user_agent_hash' => pSQL($this->hmac((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''))),
-            'date_add' => pSQL(date('Y-m-d H:i:s')),
+            'date_add' => pSQL($now),
         ]);
     }
 
     private function incrementRateLimit(string $scopeHash, string $route): int
     {
+        $now = date('Y-m-d H:i:s');
         $windowStart = date('Y-m-d H:i:00', (int) floor(time() / 300) * 300);
-        $sql = 'INSERT INTO `' . _DB_PREFIX_ . 'advclickfraud_rate_limit` (`id_shop`, `scope_hash`, `route_type`, `hits`, `window_start`, `date_upd`) VALUES (' . (int) $this->context->shop->id . ', "' . pSQL($scopeHash) . '", "' . pSQL($route) . '", 1, "' . pSQL($windowStart) . '", "' . pSQL(date('Y-m-d H:i:s')) . '") ON DUPLICATE KEY UPDATE `hits` = `hits` + 1, `date_upd` = VALUES(`date_upd`)';
+        $sql = 'INSERT INTO `' . _DB_PREFIX_ . 'advclickfraud_rate_limit` (`id_shop`, `scope_hash`, `route_type`, `hits`, `window_start`, `date_upd`) VALUES (' . (int) $this->context->shop->id . ', "' . pSQL($scopeHash) . '", "' . pSQL(substr($route, 0, 32)) . '", 1, "' . pSQL($windowStart) . '", "' . pSQL($now) . '") ON DUPLICATE KEY UPDATE `hits` = `hits` + 1, `date_upd` = "' . pSQL($now) . '"';
         Db::getInstance()->execute($sql);
 
-        return (int) Db::getInstance()->getValue('SELECT `hits` FROM `' . _DB_PREFIX_ . 'advclickfraud_rate_limit` WHERE `id_shop` = ' . (int) $this->context->shop->id . ' AND `scope_hash` = "' . pSQL($scopeHash) . '" AND `route_type` = "' . pSQL($route) . '" AND `window_start` = "' . pSQL($windowStart) . '"');
+        return (int) Db::getInstance()->getValue('SELECT `hits` FROM `' . _DB_PREFIX_ . 'advclickfraud_rate_limit` WHERE `id_shop` = ' . (int) $this->context->shop->id . ' AND `scope_hash` = "' . pSQL($scopeHash) . '" AND `route_type` = "' . pSQL(substr($route, 0, 32)) . '" AND `window_start` = "' . pSQL($windowStart) . '"');
     }
 
     private function fingerprintPayload(array $payload): ?string
@@ -620,15 +626,87 @@ class AdvClickFraud extends Module
         }
 
         foreach ($rows as &$row) {
-            $payload = json_decode((string) $row['payload'], true);
-            $reasons = json_decode((string) $row['reason_codes'], true);
-            $row['channel'] = is_array($payload) && isset($payload['attribution']['channel']) ? (string) $payload['attribution']['channel'] : '';
-            $row['campaign'] = is_array($payload) && isset($payload['attribution']['campaign']) ? (string) $payload['attribution']['campaign'] : '';
-            $row['reason_list'] = is_array($reasons) ? implode(', ', $reasons) : '';
+            $payload = $this->safeJsonDecode((string) ($row['payload'] ?? ''));
+            $reasons = $this->safeJsonDecode((string) ($row['reason_codes'] ?? ''));
+
+            $row['event_type'] = substr((string) ($row['event_type'] ?? ''), 0, 64);
+            $row['decision'] = substr((string) ($row['decision'] ?? ''), 0, 32);
+            $row['channel'] = $this->nestedScalar($payload, ['attribution', 'channel'], 64);
+            $row['campaign'] = $this->nestedScalar($payload, ['attribution', 'campaign'], 128);
+            $row['reason_list'] = $this->reasonList($reasons);
         }
         unset($row);
 
         return $rows;
+    }
+
+    private function safeJson(array $data, int $maxBytes = 60000): string
+    {
+        try {
+            $json = json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        } catch (JsonException $exception) {
+            unset($exception);
+
+            return '[]';
+        }
+
+        if (strlen($json) <= $maxBytes) {
+            return $json;
+        }
+
+        try {
+            return json_encode([
+                'truncated' => true,
+                'sha256' => hash('sha256', $json),
+                'original_bytes' => strlen($json),
+            ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        } catch (JsonException $exception) {
+            unset($exception);
+
+            return '{"truncated":true}';
+        }
+    }
+
+    private function safeJsonDecode(string $json): array
+    {
+        if ($json === '') {
+            return [];
+        }
+
+        try {
+            $decoded = json_decode($json, true, 16, JSON_THROW_ON_ERROR);
+        } catch (JsonException $exception) {
+            unset($exception);
+
+            return [];
+        }
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function nestedScalar(array $source, array $path, int $maxLength): string
+    {
+        $value = $source;
+        foreach ($path as $key) {
+            if (!is_array($value) || !array_key_exists($key, $value)) {
+                return '';
+            }
+            $value = $value[$key];
+        }
+
+        return is_scalar($value) ? substr((string) $value, 0, $maxLength) : '';
+    }
+
+    private function reasonList(array $reasons): string
+    {
+        $cleanReasons = [];
+        foreach ($reasons as $reason) {
+            if (is_scalar($reason)) {
+                $cleanReasons[] = substr((string) $reason, 0, 96);
+            }
+        }
+
+        return substr(implode(', ', $cleanReasons), 0, 512);
     }
 
     private function resolvePageType(): string
