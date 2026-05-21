@@ -7,6 +7,7 @@
 
   var start = Date.now();
   var interacted = false;
+  var firstInteractionAt = null;
   var maxScroll = 0;
 
   function bucketNumber(value, step, max) {
@@ -77,7 +78,19 @@
   function collectQuery() {
     var result = {};
     var params = new URLSearchParams(window.location.search);
-    ['gclid', 'fbclid', 'ttclid', 'msclkid', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content'].forEach(function (key) {
+    [
+      'gclid',
+      'wbraid',
+      'gbraid',
+      'fbclid',
+      'ttclid',
+      'msclkid',
+      'utm_source',
+      'utm_medium',
+      'utm_campaign',
+      'utm_content',
+      'utm_term'
+    ].forEach(function (key) {
       if (params.has(key)) {
         result[key] = params.get(key);
       }
@@ -85,16 +98,46 @@
     return result;
   }
 
+  function classifyAttribution(query) {
+    if (query.gclid || query.wbraid || query.gbraid) {
+      return {isPaidClick: true, channel: 'google_ads', clickIdType: query.gclid ? 'gclid' : (query.wbraid ? 'wbraid' : 'gbraid')};
+    }
+    if (query.fbclid) {
+      return {isPaidClick: true, channel: 'meta_ads', clickIdType: 'fbclid'};
+    }
+    if (query.ttclid) {
+      return {isPaidClick: true, channel: 'tiktok_ads', clickIdType: 'ttclid'};
+    }
+    if (query.msclkid) {
+      return {isPaidClick: true, channel: 'microsoft_ads', clickIdType: 'msclkid'};
+    }
+    if (query.utm_source) {
+      return {isPaidClick: true, channel: String(query.utm_source).slice(0, 64), clickIdType: 'utm_source'};
+    }
+    return {isPaidClick: false, channel: 'organic_or_direct', clickIdType: ''};
+  }
+
   function buildPayload() {
     var screenWidth = window.screen && window.screen.width ? window.screen.width : 0;
     var screenHeight = window.screen && window.screen.height ? window.screen.height : 0;
+    var query = collectQuery();
+    var attribution = classifyAttribution(query);
 
     return {
       sdkVersion: '1.0.0',
       requestId: window.advClickFraud.requestId || '',
       pageType: window.advClickFraud.pageType || 'page',
       shopId: window.advClickFraud.shopId || 0,
-      query: collectQuery(),
+      query: query,
+      attribution: {
+        isPaidClick: attribution.isPaidClick,
+        channel: attribution.channel,
+        clickIdType: attribution.clickIdType,
+        campaign: query.utm_campaign || '',
+        medium: query.utm_medium || '',
+        content: query.utm_content || '',
+        term: query.utm_term || ''
+      },
       signals: {
         uaJs: navigator.userAgent || '',
         platform: navigator.platform || '',
@@ -111,8 +154,10 @@
         cookieRoundtrip: navigator.cookieEnabled
       },
       behavior: {
-        timeToFirstInteractionMs: interacted ? Date.now() - start : null,
-        scrollDepthBucket: bucketNumber(maxScroll, 25, 100)
+        pageReadyMs: Date.now() - start,
+        timeToFirstInteractionMs: firstInteractionAt === null ? null : firstInteractionAt - start,
+        scrollDepthBucket: bucketNumber(maxScroll, 25, 100),
+        hadInteraction: interacted
       }
     };
   }
@@ -135,6 +180,9 @@
   ['pointerdown', 'keydown', 'touchstart'].forEach(function (eventName) {
     window.addEventListener(eventName, function () {
       interacted = true;
+      if (firstInteractionAt === null) {
+        firstInteractionAt = Date.now();
+      }
     }, {once: true, passive: true});
   });
 
